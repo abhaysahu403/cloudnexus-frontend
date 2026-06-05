@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://3.236.143.159:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://34.193.185.237:5000/api';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
