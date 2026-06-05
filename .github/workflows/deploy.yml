@@ -1,0 +1,60 @@
+name: Frontend Deployment to EC2
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'Dockerfile'
+      - '.github/workflows/deploy.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Frontend EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.FRONTEND_EC2_IP }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd /opt/cloud-nexus-frontend
+            
+            echo "Pulling latest code..."
+            git pull origin main
+            
+            echo "Updating .env file..."
+            cat > .env << EOF
+            REACT_APP_API_URL=${{ secrets.BACKEND_API_URL }}
+            REACT_APP_ENV=production
+            EOF
+            
+            echo "Building Docker image..."
+            docker build -t cloud-nexus-frontend:latest .
+            
+            echo "Stopping old container..."
+            docker stop cloud-nexus-frontend || true
+            docker rm cloud-nexus-frontend || true
+            
+            echo "Starting new container..."
+            docker run -d \
+              --name cloud-nexus-frontend \
+              -p 3000:3000 \
+              --restart always \
+              cloud-nexus-frontend:latest
+            
+            echo "Frontend deployment complete!"
+            docker ps | grep cloud-nexus-frontend
